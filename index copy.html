@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿队 vs 红队 - 汉字英文配对PK</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+            background-attachment: fixed;
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .team-area {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        
+        #green-team {
+            background-color: rgba(144, 238, 144, 0.6);
+        }
+        
+        #red-team {
+            background-color: rgba(255, 182, 193, 0.6);
+        }
+        
+        .team-title {
+            font-size: 1.8em;
+            margin: 5px 0;
+            text-align: center;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .score {
+            font-size: 1.5em;
+            margin: 5px 0;
+            color: #333;
+        }
+        
+        /* 优化游戏区域，支持更多卡片每行 */
+        .game-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 95%; /* 几乎充满整个团队区域 */
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        
+        /* 响应式卡片大小，根据容器宽度自动调整 */
+        .card {
+            flex: 0 0 auto;
+            min-width: 80px;
+            max-width: 120px;
+            width: calc(16.666% - 8px); /* 默认每行6个 */
+            height: 70px;
+            background-color: rgba(255, 255, 245, 0.95);
+            color: #333;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: clamp(0.9em, 2vw, 1.2em); /* 响应式字体大小 */
+            transition: all 0.2s;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            padding: 5px;
+            border: 2px solid transparent;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        #green-team .card.selected {
+            background-color: #90EE90;
+            border-color: #228B22;
+        }
+        
+        #red-team .card.selected {
+            background-color: #FFB6C1;
+            border-color: #CD5C5C;
+        }
+        
+        .card.matched {
+            visibility: hidden;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s;
+        }
+        
+        .pinyin {
+            font-size: 0.7em;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .chinese {
+            font-family: "楷体", "KaiTi", "STKaiti", serif;
+            font-size: 1.2em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        
+        button {
+            padding: 8px 16px;
+            font-size: 1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        
+        #green-team button {
+            background-color: #90EE90;
+            color: #333;
+        }
+        
+        #red-team button {
+            background-color: #FFB6C1;
+            color: #333;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .timer {
+            font-size: 2em;
+            margin: 10px 0;
+            color: #D9534F;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .winner-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px 60px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            min-width: 300px;
+        }
+        
+        .winner-text {
+            font-size: 2.5em;
+            color: #D9534F;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .center-area {
+            width: 60px;
+            background-color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .divider {
+            width: 3px;
+            background-color: rgba(0, 0, 0, 0.2);
+            height: 80%;
+        }
+        
+        #play-again-btn {
+            background-color: #D9534F;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1.2em;
+        }
+
+        /* 紧凑的游戏设置区域 */
+        .game-settings {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px auto;
+            width: 95%;
+            max-width: 1200px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .settings-group {
+            flex: 1;
+            min-width: 200px;
+            margin: 0 5px 5px;
+        }
+
+        .settings-label {
+            font-size: 0.9em;
+            margin-bottom: 3px;
+            display: block;
+            font-weight: bold;
+        }
+
+        .settings-input {
+            padding: 6px 10px;
+            font-size: 0.9em;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #custom-words {
+            height: 60px;
+            resize: vertical;
+            font-family: Arial, sans-serif;
+        }
+
+        .instructions {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 3px;
+            font-style: italic;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .main-controls {
+            margin-top: 5px;
+        }
+
+        #restart-all-btn, #apply-settings-btn {
+            padding: 6px 15px;
+            font-size: 0.9em;
+            margin: 0 3px;
+        }
+
+        #restart-all-btn {
+            background-color: #5BC0DE;
+            color: white;
+        }
+
+        #apply-settings-btn {
+            background-color: #5CB85C;
+            color: white;
+        }
+
+        /* 响应式调整 - 大屏幕每行显示8个卡片 */
+        @media (min-width: 1200px) {
+            .card {
+                width: calc(12.5% - 8px); /* 每行8个 */
+            }
+        }
+
+        /* 中等屏幕每行显示6个卡片 */
+        @media (min-width: 900px) and (max-width: 1199px) {
+            .card {
+                width: calc(16.666% - 8px); /* 每行6个 */
+            }
+        }
+
+        /* 小屏幕每行显示4个卡片 */
+        @media (min-width: 600px) and (max-width: 899px) {
+            .card {
+                width: calc(25% - 8px); /* 每行4个 */
+            }
+        }
+
+        /* 移动设备每行显示2-3个卡片 */
+        @media (max-width: 599px) {
+            .card {
+                width: calc(33.333% - 8px); /* 每行3个 */
+            }
+            
+            .container {
+                flex-direction: column;
+            }
+            
+            .center-area {
+                width: 100%;
+                height: 40px;
+            }
+            
+            .divider {
+                width: 80%;
+                height: 3px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .card {
+                width: calc(50% - 8px); /* 每行2个 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 紧凑的游戏设置区域 -->
+    <div class="game-settings">
+        <div class="settings-row">
+            <div class="settings-group">
+                <label class="settings-label">游戏时间（秒）</label>
+                <input type="number" id="time-setting" class="settings-input" value="120" min="30" max="300">
+                <div class="instructions">30-300之间</div>
+            </div>
+            
+            <div class="settings-group">
+                <label class="settings-label">自定义词语（中英文空格分隔）</label>
+                <textarea id="custom-words" class="settings-input" placeholder="例如：医生 doctor&#10;护士 nurse"></textarea>
+            </div>
+        </div>
+        
+        <div class="main-controls">
+            <button id="apply-settings-btn">应用设置</button>
+            <button id="restart-all-btn">重新开始</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="team-area" id="green-team">
+            <h2 class="team-title"><span class="pinyin">lǜ duì</span><br>绿队</h2>
+            <div class="score">分数: <span id="green-score">0</span></div>
+            <div class="timer" id="timer">2:00</div>
+            <div class="game-area" id="green-game"></div>
+            <div class="controls">
+                <button id="start-btn-green">开始</button>
+                <button id="restart-btn-green" disabled>再玩一次</button>
+            </div>
+        </div>
+        
+        <div class="center-area">
+            <div class="divider"></div>
+        </div>
+        
+        <div class="team-area" id="red-team">
+            <h2 class="team-title"><span class="pinyin">hóng duì</span><br>红队</h2>
+            <div class="score">分数: <span id="red-score">0</span></div>
+            <div class="timer" id="timer2">2:00</div>
+            <div class="game-area" id="red-game"></div>
+            <div class="controls">
+                <button id="start-btn-red">开始</button>
+                <button id="restart-btn-red" disabled>再玩一次</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="winner-display" id="winner-display">
+        <div class="winner-text">获胜: <span id="winner-name"></span></div>
+        <button id="play-again-btn">再玩一次</button>
+    </div>
+
+    <script>
+        // 默认游戏数据
+        let wordPairs = [
+            { chinese: "医生", english: "doctor" },
+            { chinese: "护士", english: "nurse" },
+            { chinese: "学生", english: "student" },
+            { chinese: "宠物", english: "pet" },
+            { chinese: "真", english: "really" },
+            { chinese: "匹", english: "measure word" },
+            { chinese: "凶", english: "fierce" },
+            { chinese: "姓", english: "to be surnamed" },
+            { chinese: "老师", english: "teacher" },
+            { chinese: "学校", english: "school" },
+            { chinese: "朋友", english: "friend" },
+            { chinese: "家庭", english: "family" }
+        ];
+
+        // 游戏状态
+        let gameState = {
+            green: {
+                selectedCard: null,
+                score: 0,
+                matchedPairs: 0,
+                cards: []
+            },
+            red: {
+                selectedCard: null,
+                score: 0,
+                matchedPairs: 0,
+                cards: []
+            },
+            timeLeft: 120,
+            timer: null,
+            gameStarted: false
+        };
+
+        // DOM元素
+        const elements = {
+            green: {
+                gameArea: document.getElementById('green-game'),
+                score: document.getElementById('green-score'),
+                startBtn: document.getElementById('start-btn-green'),
+                restartBtn: document.getElementById('restart-btn-green')
+            },
+            red: {
+                gameArea: document.getElementById('red-game'),
+                score: document.getElementById('red-score'),
+                startBtn: document.getElementById('start-btn-red'),
+                restartBtn: document.getElementById('restart-btn-red')
+            },
+            timer: document.getElementById('timer'),
+            timer2: document.getElementById('timer2'),
+            winnerDisplay: document.getElementById('winner-display'),
+            winnerName: document.getElementById('winner-name'),
+            playAgainBtn: document.getElementById('play-again-btn'),
+            timeSetting: document.getElementById('time-setting'),
+            customWords: document.getElementById('custom-words'),
+            applySettingsBtn: document.getElementById('apply-settings-btn'),
+            restartAllBtn: document.getElementById('restart-all-btn')
+        };
+
+        // 初始化游戏
+        function initGame() {
+            gameState = {
+                green: {
+                    selectedCard: null,
+                    score: 0,
+                    matchedPairs: 0,
+                    cards: []
+                },
+                red: {
+                    selectedCard: null,
+                    score: 0,
+                    matchedPairs: 0,
+                    cards: []
+                },
+                timeLeft: parseInt(elements.timeSetting.value) || 120,
+                timer: null,
+                gameStarted: false
+            };
+
+            elements.green.score.textContent = '0';
+            elements.red.score.textContent = '0';
+            updateTimerDisplay();
+            elements.winnerDisplay.style.display = 'none';
+
+            createCards('green');
+            createCards('red');
+
+            elements.green.startBtn.disabled = false;
+            elements.red.startBtn.disabled = false;
+            elements.green.restartBtn.disabled = true;
+            elements.red.restartBtn.disabled = true;
+        }
+
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            const minutes = Math.floor(gameState.timeLeft / 60);
+            const seconds = gameState.timeLeft % 60;
+            const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            
+            elements.timer.textContent = timeString;
+            elements.timer2.textContent = timeString;
+        }
+
+        // 创建卡片
+        function createCards(team) {
+            const gameArea = elements[team].gameArea;
+            gameArea.innerHTML = '';
+            gameState[team].cards = [];
+
+            let allWords = [];
+            wordPairs.forEach(pair => {
+                allWords.push({
+                    type: 'chinese',
+                    text: pair.chinese,
+                    english: pair.english
+                });
+                allWords.push({
+                    type: 'english',
+                    text: pair.english,
+                    chinese: pair.chinese
+                });
+            });
+
+            allWords = shuffleArray(allWords);
+
+            allWords.forEach((word, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.index = index;
+                card.dataset.type = word.type;
+                card.dataset.text = word.text;
+                card.dataset.match = word.type === 'chinese' ? word.english : word.chinese;
+                
+                // 自动调整长单词的字体大小
+                if (word.text.length > 8) {
+                    card.style.fontSize = '0.8em';
+                } else if (word.text.length > 5) {
+                    card.style.fontSize = '0.9em';
+                }
+                
+                if (word.type === 'chinese') {
+                    card.innerHTML = `<div class="chinese">${word.text}</div>`;
+                } else {
+                    card.innerHTML = `<div>${word.text}</div>`;
+                }
+                
+                card.addEventListener('click', () => handleCardClick(team, index));
+                gameArea.appendChild(card);
+                gameState[team].cards.push({
+                    element: card,
+                    matched: false
+                });
+            });
+        }
+
+        // 处理卡片点击
+        function handleCardClick(team, index) {
+            if (!gameState.gameStarted || gameState[team].cards[index].matched) return;
+
+            const cardState = gameState[team];
+            const clickedCard = cardState.cards[index].element;
+
+            if (cardState.selectedCard !== null) {
+                const prevCard = cardState.cards[cardState.selectedCard].element;
+                
+                if (cardState.selectedCard === index) {
+                    prevCard.classList.remove('selected');
+                    cardState.selectedCard = null;
+                    return;
+                }
+                
+                if (prevCard.dataset.match === clickedCard.dataset.text) {
+                    prevCard.classList.add('matched');
+                    clickedCard.classList.add('matched');
+                    
+                    cardState.cards[cardState.selectedCard].matched = true;
+                    cardState.cards[index].matched = true;
+                    
+                    cardState.selectedCard = null;
+                    cardState.matchedPairs++;
+                    cardState.score += 10;
+                    elements[team].score.textContent = cardState.score;
+                    
+                    checkGameEnd();
+                } else {
+                    clickedCard.classList.add('selected');
+                    setTimeout(() => {
+                        prevCard.classList.remove('selected');
+                        clickedCard.classList.remove('selected');
+                        cardState.selectedCard = null;
+                    }, 500);
+                }
+            } else {
+                clickedCard.classList.add('selected');
+                cardState.selectedCard = index;
+            }
+        }
+
+        // 检查游戏是否结束
+        function checkGameEnd() {
+            const totalPairs = wordPairs.length;
+            const greenComplete = gameState.green.matchedPairs === totalPairs;
+            const redComplete = gameState.red.matchedPairs === totalPairs;
+            const timeUp = gameState.timeLeft <= 0;
+
+            if (greenComplete || redComplete || timeUp) {
+                clearInterval(gameState.timer);
+                gameState.gameStarted = false;
+                
+                let winner = '';
+                if (greenComplete && !redComplete) {
+                    winner = '绿队';
+                } else if (!greenComplete && redComplete) {
+                    winner = '红队';
+                } else if (gameState.green.score > gameState.red.score) {
+                    winner = '绿队';
+                } else if (gameState.red.score > gameState.green.score) {
+                    winner = '红队';
+                } else {
+                    winner = '平局';
+                }
+                
+                elements.winnerName.textContent = winner;
+                elements.winnerDisplay.style.display = 'block';
+                
+                elements.green.restartBtn.disabled = false;
+                elements.red.restartBtn.disabled = false;
+            }
+        }
+
+        // 开始游戏
+        function startGame() {
+            if (gameState.gameStarted) return;
+            
+            gameState.gameStarted = true;
+            elements.green.startBtn.disabled = true;
+            elements.red.startBtn.disabled = true;
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                updateTimerDisplay();
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    checkGameEnd();
+                }
+            }, 1000);
+        }
+
+        // 应用设置
+        function applySettings() {
+            const newTime = parseInt(elements.timeSetting.value);
+            if (newTime && newTime >= 30 && newTime <= 300) {
+                gameState.timeLeft = newTime;
+                updateTimerDisplay();
+            }
+            
+            const customWordsText = elements.customWords.value.trim();
+            if (customWordsText) {
+                const newPairs = [];
+                const lines = customWordsText.split('\n');
+                
+                lines.forEach(line => {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length >= 2) {
+                        const chinese = parts[0];
+                        const english = parts.slice(1).join(' ');
+                        newPairs.push({ chinese, english });
+                    }
+                });
+                
+                if (newPairs.length > 0) {
+                    wordPairs = newPairs;
+                }
+            }
+            
+            initGame();
+        }
+
+        // 洗牌数组
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // 事件监听器
+        elements.green.startBtn.addEventListener('click', startGame);
+        elements.red.startBtn.addEventListener('click', startGame);
+        elements.green.restartBtn.addEventListener('click', initGame);
+        elements.red.restartBtn.addEventListener('click', initGame);
+        elements.playAgainBtn.addEventListener('click', () => {
+            elements.winnerDisplay.style.display = 'none';
+            initGame();
+        });
+        
+        elements.applySettingsBtn.addEventListener('click', applySettings);
+        elements.restartAllBtn.addEventListener('click', initGame);
+
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
